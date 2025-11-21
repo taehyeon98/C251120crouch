@@ -19,7 +19,7 @@ void UCAnim::NativeUpdateAnimation(float DeltaSeconds)
 		bAiming = Char->bAiming;
 		bLeftLean = Char->bLeftLean;
 		bRightLean = Char->bRightLean;
-		bCrouch = Char->bCrouch;
+		bIsCrouched = Char->bIsCrouched;
 
 		float TargetLeanAngle = 0;
 		if (bLeftLean)

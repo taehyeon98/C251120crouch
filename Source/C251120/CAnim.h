@@ -45,8 +45,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
 	float CurrentLeanAngle;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
-	uint8 bCrouch : 1;
+	UPROPERTY(BlueprintReadOnly, Category = Character)
+	uint8 bIsCrouched : 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
 	EWeaponState WeaponState = EWeaponState::Unarmed;

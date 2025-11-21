@@ -58,8 +58,6 @@ public:
 	uint8 bAiming : 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
-	uint8 bCrouch : 1;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
 	EWeaponState WeaponState = EWeaponState::Unarmed;
+
 };
