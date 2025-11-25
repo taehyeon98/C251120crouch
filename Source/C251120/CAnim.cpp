@@ -38,6 +38,8 @@ void UCAnim::NativeUpdateAnimation(float DeltaSeconds)
 		CurrentLeanAngle = FMath::FInterpTo(CurrentLeanAngle, TargetLeanAngle, DeltaSeconds, 8.0f);
 
 		WeaponState = Char->WeaponState;
+
+		bIsFalling = Char->GetCharacterMovement()->IsFalling();
 	}
 
 }

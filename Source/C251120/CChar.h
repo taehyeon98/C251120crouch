@@ -6,12 +6,15 @@
 #include "GameFramework/Character.h"
 #include "CChar.generated.h"
 
+class UInputAction;
+
 UENUM(BlueprintType)
 enum class EWeaponState : uint8
 {
 	Unarmed = 0 UMETA(DisplayName = "Unarmed"),
 	Pistol = 10 UMETA(DisplayName = "Pistol"),
-	Rifle = 20 UMETA(DisplayName = "Rifle")
+	Rifle = 20 UMETA(DisplayName = "Rifle"),
+	Launcher = 30 UMETA(DisplayName = "Launcher")
 };
 
 UCLASS()
@@ -36,6 +39,9 @@ public:
 
 	virtual bool CanCrouch() const override;
 
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
+
+
 	UPROPERTY(BlueprintReadOnly,VisibleAnywhere,Category = Component)
 	TObjectPtr<class USpringArmComponent> SpringArm;
 
@@ -59,5 +65,54 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
 	EWeaponState WeaponState = EWeaponState::Unarmed;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
+	TObjectPtr<UAnimMontage> HitMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
+	TObjectPtr<UAnimMontage> DeathMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
+	TObjectPtr<UInputAction> IA_Reload;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
+	TObjectPtr<UInputAction> IA_Fire;
+
+	UPROPERTY(Category = Character, EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UChildActorComponent> Weapon;
+
+	UFUNCTION(BlueprintCallable)
+	void HitReaction();
+
+	UFUNCTION(BlueprintCallable)
+	void ReloadWeapon();
+
+	UFUNCTION(BlueprintCallable)
+	void DeathReaction();
+
+	UFUNCTION(BlueprintCallable)
+	void Death();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
+	float CurrentHP = 100;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
+	float MaxHP = 100;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
+	uint8 bIsFire : 1 = false;
+
+	UFUNCTION(BlueprintCallable)
+	void Reload();
+
+	UFUNCTION(BlueprintCallable)
+	void DoFire();
+
+	UFUNCTION(BlueprintCallable)
+	void StartFire();
+
+	UFUNCTION(BlueprintCallable)
+	void StopFire();
+
 
 };
