@@ -16,6 +16,10 @@
 #include "BaseDamageType.h"
 #include "Engine/DamageEvents.h"
 #include "Components/PrimitiveComponent.h"
+#include "PickupItem.h"
+#include "Components/DecalComponent.h"
+#include "CPPZombie.h"
+#include <Perception/AIPerceptionStimuliSourceComponent.h>
 
 // Sets default values
 ACChar::ACChar()
@@ -40,21 +44,16 @@ ACChar::ACChar()
 	Weapon = CreateDefaultSubobject<UChildActorComponent>(TEXT("Weapon"));
 	Weapon->SetupAttachment(GetMesh());
 
+	StimuliSource = CreateDefaultSubobject<UAIPerceptionStimuliSourceComponent>(TEXT("StimuliSource"));
+
+	TeamID = 1;
 }
 
 // Called when the game starts or when spawned
 void ACChar::BeginPlay()
 {
 	Super::BeginPlay();
-
-	AWeaponBase* ChildWeapon = Cast<AWeaponBase>(Weapon->GetChildActor());
-	if (ChildWeapon)
-	{
-		ChildWeapon->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, ChildWeapon->SocketName);
-		WeaponState = EWeaponState::Pistol;
-		ChildWeapon->SetOwner(this);
-	}
-	
+	OnActorBeginOverlap.AddDynamic(this, &ACChar::ProcessActorBeginOverlap);
 }
 
 // Called every frame
@@ -79,6 +78,10 @@ void ACChar::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 			&ACChar::StopFire);
 		UIC->BindAction(IA_Fire, ETriggerEvent::Started, this,
 			&ACChar::StartFire);
+		UIC->BindAction(IA_IronSight, ETriggerEvent::Started, this,
+			&ACChar::StartIronSight);
+		UIC->BindAction(IA_IronSight, ETriggerEvent::Completed, this,
+			&ACChar::StopIronSight);
 	}
 }
 
@@ -106,8 +109,9 @@ float ACChar::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AC
 
 			UE_LOG(LogTemp, Warning, TEXT("PointDamage %f %s"), DamageAmount ,*(Event->HitInfo.BoneName.ToString()));
 
-			HitReaction();
 		}
+		
+		SpawnHitEffect(Event->HitInfo);
 	}
 	else if (DamageEvent.IsOfType(FRadialDamageEvent::ClassID))
 	{
@@ -124,13 +128,14 @@ float ACChar::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AC
 		UE_LOG(LogTemp, Warning, TEXT("Damage %f"), DamageAmount);
 	}
 	
+	HitReaction();
 	if (CurrentHP <= 0)
 	{
 		//네트워크 할려면 다 RPC로 작업.
 		DeathReaction();
 	}
 
-	return 0.0f;
+	return DamageAmount;
 }
 
 void ACChar::Move(float Forward, float Right)
@@ -185,6 +190,16 @@ void ACChar::StopFire()
 	}
 }
 
+void ACChar::SetGenericTeamId(const FGenericTeamId& InTeamID)
+{
+	TeamID = InTeamID;
+}
+
+FGenericTeamId ACChar::GetGenericTeamId() const
+{
+	return TeamID;
+}
+
 
 void ACChar::HitReaction()
 {
@@ -208,15 +223,153 @@ void ACChar::DeathReaction()
 	PlayAnimMontage(DeathMontage, 1.0, FName(*SectionName));
 }
 
+
 void ACChar::Death()
 {
 	GetController()->SetActorEnableCollision(false);
-	GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
-	//GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	GetMesh()->SetSimulatePhysics(true);
-
-	
 }
+
+void ACChar::ProcessActorBeginOverlap(AActor* OverlappedActor, AActor* OtherActor)
+{
+	APickupItem* PickedupItem = Cast<APickupItem>(OtherActor);
+	if(PickedupItem)
+	{
+		switch (PickedupItem->ItemType)
+		{
+		case EItemType::Use:
+			UseItem(PickedupItem);
+			break;
+		case EItemType::Eat:
+			EatItem(PickedupItem);
+			break;
+		case EItemType::Equip:
+			EquipItem(PickedupItem);
+			break;
+		}
+
+		if (!PickedupItem->bIsInfinity)
+		{
+			PickedupItem->Destroy();
+		}
+	}
+}
+
+void ACChar::EatItem(APickupItem* PickedupItem)
+{
+
+}
+
+void ACChar::UseItem(APickupItem* PickedupItem)
+{
+
+}
+
+void ACChar::EquipItem(APickupItem* PickedupItem)
+{
+	Weapon->SetChildActorClass(PickedupItem->ItemTemplate);
+	AWeaponBase* ChildWeapon = Cast<AWeaponBase>(Weapon->GetChildActor());
+	if (ChildWeapon)
+	{
+		if (ChildWeapon->Name.Compare(TEXT("Pistol")) == 0)
+		{
+			ChildWeapon->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, ChildWeapon->SocketName);
+			WeaponState = EWeaponState::Pistol;
+			ChildWeapon->SetOwner(this);
+		}
+		if (ChildWeapon->Name.Compare(TEXT("Rifle")) == 0)
+		{
+			ChildWeapon->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, ChildWeapon->SocketName);
+			WeaponState = EWeaponState::Rifle;
+			ChildWeapon->SetOwner(this);
+		}
+		if (ChildWeapon->Name.Compare(TEXT("launcher")) == 0)
+		{
+			ChildWeapon->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, ChildWeapon->SocketName);
+			WeaponState = EWeaponState::Launcher;
+			ChildWeapon->SetOwner(this);
+		}
+		
+	}
+}
+
+void ACChar::StartIronSight()
+{
+	bIsIronSight = true;
+}
+
+void ACChar::StopIronSight()
+{
+	bIsIronSight = false;
+}
+
+void ACChar::SpawnHitEffect(FHitResult Hit)
+{
+	if (BloodEffect)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("BloodEffect"));
+		UGameplayStatics::SpawnEmitterAtLocation(
+			GetWorld(),
+			BloodEffect,
+			Hit.ImpactPoint,
+			Hit.ImpactNormal.Rotation()
+		);
+	}
+}
+
+
+//void ACChar::GetItem()
+//{
+//
+//	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
+//	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_GameTraceChannel1));
+//	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_WorldDynamic));
+//
+//	TArray<AActor*> IngnoreActors;
+//	FHitResult HitResult;
+//
+//	FVector Sphere = GetMesh()->GetComponentLocation();
+//	
+//	bool bResult = UKismetSystemLibrary::SphereTraceSingleForObjects(
+//		GetWorld(),
+//		Sphere,
+//		Sphere,
+//		60.0f,
+//		ObjectTypes,
+//		true,
+//		IngnoreActors,
+//		EDrawDebugTrace::ForDuration,
+//		HitResult,
+//		true
+//	);
+//	UE_LOG(LogTemp, Warning, TEXT("Hit %s"), *HitResult.GetActor()->GetName());
+//
+//	if (bResult)
+//	{
+//		AWeaponBase* ChildWeapon = Cast<AWeaponBase>(Weapon->GetChildActor());
+//		if (ChildWeapon)
+//		{
+//			ChildWeapon->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, ChildWeapon->SocketName);
+//			FString Item = HitResult.GetActor()->GetName();
+//			Item.Split(TEXT("_C"), &Item, nullptr);
+//			if (Item == TEXT("BP_GroundPistol"))
+//			{
+//				WeaponState = EWeaponState::Pistol;
+//			}
+//			else if (Item == TEXT("BP_GroundRifle"))
+//			{
+//				WeaponState = EWeaponState::Rifle;
+//			}
+//			else if (Item == TEXT("BP_GroundLauncher"))
+//			{
+//				WeaponState = EWeaponState::Launcher;
+//			}
+//			ChildWeapon->SetOwner(this);
+//		}
+//	}
+//
+//}
 
 
 

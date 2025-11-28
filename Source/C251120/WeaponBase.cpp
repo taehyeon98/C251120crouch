@@ -11,6 +11,8 @@
 #include "BaseDamageType.h"
 #include "GameFramework/Character.h"
 #include "TimerManager.h"
+#include "ProjectileBase.h"
+#include "Kismet/KismetMathLibrary.h"
 
 // Sets default values
 AWeaponBase::AWeaponBase()
@@ -69,6 +71,10 @@ void AWeaponBase::Fire()
 		return;
 	}
 	
+
+
+
+
 	APlayerController* PC = Cast<APlayerController>(Character->GetController());
 	if (PC)
 	{
@@ -111,51 +117,29 @@ void AWeaponBase::Fire()
 			ObjectTypes,
 			true,
 			IngnoreActors,
-			EDrawDebugTrace::ForDuration,
+			EDrawDebugTrace::None,
 			HitResult,
 			true
 		);
-		if (bResult)
-		{
-			//HitResult.GetActor();
-			//RPG
-			/*UGameplayStatics::ApplyDamage(
-				HitResult.GetActor(),
-				50,
-				GetController(),
-				this,
-				UBaseDamageType::StaticClass()
-			);
-			UE_LOG(LogTemp, Warning, TEXT("Hit %s"), *HitResult.GetActor()->GetName());*/
 
-			//ÃÑ½î´Â µ¥¹ÌÁö
-			UGameplayStatics::ApplyPointDamage(
-				HitResult.GetActor(),
-				10,
-				-HitResult.ImpactNormal,
-				HitResult,
-				PC,
-				this,
-				UBaseDamageType::StaticClass()
-			);
-			//UE_LOG(LogTemp, Warning, TEXT("Hit %s"), *HitResult.GetActor()->GetName());
+		FVector SpawnLocation = Mesh->GetSocketLocation(TEXT("Muzzle"));
+		FVector TargetLocation = bResult ? HitResult.ImpactPoint : End;
+		FVector BulletDirection = (TargetLocation - SpawnLocation).GetSafeNormal();
 
-			////¹üÀ§°ø°Ý, ÆøÅº
-			//UGameplayStatics::ApplyRadialDamage(
-			//	HitResult.GetActor(), 
-			//	50, 
-			//	HitResult.ImpactPoint,
-			//	300.0f, 
-			//	UBaseDamageType::StaticClass(),
-			//	IngnoreActors,
-			//	this,
-			//	GetController(),
-			//	true
-			//);
-			//UE_LOG(LogTemp, Warning, TEXT("Hit %s"), *HitResult.GetActor()->GetName());
+		FRotator AimRotation = UKismetMathLibrary::FindLookAtRotation(SpawnLocation, TargetLocation + (UKismetMathLibrary::RandomUnitVector() * 0.3f));
 
+		
+		FireProjectile(FTransform (AimRotation, SpawnLocation, FVector::OneVector), HitResult);
 
-		}
+		UGameplayStatics::SpawnEmitterAtLocation(
+			GetWorld(),
+			MuzzleFlash,
+			SpawnLocation,
+			AimRotation
+		);
+
+		//recoil
+		/*Character->AddControllerPitchInput(-0.4f);*/
 	}
 	CurrentBulletCount--;
 	UE_LOG(LogTemp, Warning, TEXT("Fire %d"), CurrentBulletCount);
@@ -163,9 +147,11 @@ void AWeaponBase::Fire()
 	TimeofLastShoot = GetWorld()->TimeSeconds;
 }
 
-void AWeaponBase::FireProjectile()
+void AWeaponBase::FireProjectile(FTransform Transform, FHitResult InHitResult)
 {
-
+	AProjectileBase* Projectile = GetWorld()->SpawnActor<AProjectileBase>(ProjectileTemplate, Transform);
+	Projectile->HitResult = InHitResult;
+	Projectile->SetOwner(this);
 }
 
 void AWeaponBase::Reload()

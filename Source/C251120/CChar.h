@@ -4,9 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "GenericTeamAgentInterface.h"
+#include <Perception/AIPerceptionStimuliSourceComponent.h>
 #include "CChar.generated.h"
-
 class UInputAction;
+class APickupItem;
 
 UENUM(BlueprintType)
 enum class EWeaponState : uint8
@@ -18,7 +20,7 @@ enum class EWeaponState : uint8
 };
 
 UCLASS()
-class C251120_API ACChar : public ACharacter
+class C251120_API ACChar : public ACharacter, public IGenericTeamAgentInterface
 {
 	GENERATED_BODY()
 
@@ -41,6 +43,18 @@ public:
 
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 
+	UFUNCTION()
+	void ProcessActorBeginOverlap( AActor* OverlappedActor, AActor* OtherActor );
+
+	void EatItem(APickupItem* PickedupItem);
+
+	void UseItem(APickupItem* PickedupItem);
+
+	void EquipItem(APickupItem* PickedupItem);
+
+	void StopIronSight();
+
+	void StartIronSight();
 
 	UPROPERTY(BlueprintReadOnly,VisibleAnywhere,Category = Component)
 	TObjectPtr<class USpringArmComponent> SpringArm;
@@ -54,6 +68,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void Aim(float Pitch, float Yaw);
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Data)
+	TObjectPtr<UMaterialInstance> Decal;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
 	uint8 bLeftLean : 1;
 
@@ -62,6 +79,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
 	uint8 bAiming : 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
+	TObjectPtr<UParticleSystem> BloodEffect;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
 	EWeaponState WeaponState = EWeaponState::Unarmed;
@@ -78,8 +98,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
 	TObjectPtr<UInputAction> IA_Fire;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
+	TObjectPtr<UInputAction> IA_IronSight;
+
+
 	UPROPERTY(Category = Character, EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UChildActorComponent> Weapon;
+
+	UFUNCTION(BlueprintCallable)
+	virtual void SpawnHitEffect(FHitResult Hit);
 
 	UFUNCTION(BlueprintCallable)
 	void HitReaction();
@@ -102,6 +129,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
 	uint8 bIsFire : 1 = false;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
+	uint8 bIsIronSight : 1 = false;
+
 	UFUNCTION(BlueprintCallable)
 	void Reload();
 
@@ -114,5 +144,15 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void StopFire();
 
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = Character)
+	FGenericTeamId TeamID;
 
+	/** Assigns Team Agent to given TeamID */
+	virtual void SetGenericTeamId(const FGenericTeamId& InTeamID) override;
+
+	/** Retrieve team identifier in form of FGenericTeamId */
+	virtual FGenericTeamId GetGenericTeamId() const override;
+
+	UPROPERTY(Category = Character, EditAnywhere, BlueprintReadWrite)
+	TObjectPtr<UAIPerceptionStimuliSourceComponent> StimuliSource;
 };

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "ItemBase.h"
 #include "WeaponBase.generated.h"
 
 class USkeletalMeshComponent;
@@ -11,7 +12,7 @@ class AProjectileBase;
 class UAnimMontage;
 
 UCLASS()
-class C251120_API AWeaponBase : public AActor
+class C251120_API AWeaponBase : public AItemBase
 {
 	GENERATED_BODY()
 	
@@ -37,6 +38,9 @@ public:
 	FName SocketName = TEXT("HandGrip_R");
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Data)
+	FName Name;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Data)
 	int32 MaxBulletCount = 100;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Data)
@@ -52,6 +56,9 @@ public:
 	TObjectPtr<class USoundBase> PistolSound;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Data)
+	TObjectPtr<UParticleSystem> MuzzleFlash;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Data)
 	uint8 bFullAuto : 1 = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Data ,meta = (ClampMin = 0.1f,ClampMax = 2.0f, Unit = "s"))
@@ -64,13 +71,13 @@ public:
 	void Reload();
 
 	UFUNCTION(BlueprintCallable)
-	void Fire();
+	virtual void Fire();
 
 	UFUNCTION(BlueprintCallable)
 	void StopFire();
 
 	UFUNCTION(BlueprintCallable)
-	void FireProjectile();
+	void FireProjectile(FTransform Transform, FHitResult InHitResult);
 
 	FTimerHandle RefireTimer;
 };
